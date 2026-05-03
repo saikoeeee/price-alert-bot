@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ product["name"] }} - Price History</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <header>
+        <a href="/" class="back-link">Back to Dashboard</a>
+        <h1>{{ product["name"] }}</h1>
+        <p>Price history in {{ currency_code }}</p>
+    </header>
+
+    <main>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Product Summary -->
+        <section class="card">
+            <div class="product-prices">
+                <div class="price-block">
+                    <span class="price-label">Current Price</span>
+                    <span class="price-value">
+                        {% if converted_latest_price %}
+                            {{ currency_symbol }}{{ "%.2f"|format(converted_latest_price) }}
+                        {% else %}
+                            Pending...
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="price-block">
+                    <span class="price-label">Your Threshold</span>
+                    <span class="price-value threshold">
+                        {{ currency_symbol }}{{ "%.2f"|format(converted_threshold) }}
+                    </span>
+                </div>
+                <div class="price-block">
+                    <span class="price-label">Tracking Since</span>
+                    <span class="price-value small">{{ product["created_at"] }}</span>
+                </div>
+            </div>
+            <a href="{{ product['url'] }}" target="_blank" class="btn btn-secondary">
+                View Product Page
+            </a>
+        </section>
+
+        <!-- Price Chart -->
+        <section class="card">
+            <h2>Price Chart</h2>
+            {% set chart_path = "charts/product_" + product["id"]|string + ".png" %}
+            {% if history|length >= 2 %}
+                <img
+                    src="{{ url_for('static', filename=chart_path) }}"
+                    alt="Price history chart"
+                    class="chart-img"
+                >
+            {% else %}
+                <p class="empty-state">
+                    Not enough data to display a chart yet.
+                    Check back after a few price checks.
+                </p>
+            {% endif %}
+        </section>
+
+        <!-- Price History Table -->
+        <section class="card">
+            <h2>Price History</h2>
+            {% if history %}
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Date and Time</th>
+                            <th>Price ({{ currency_code }})</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in history|reverse %}
+                            <tr>
+                                <td>{{ row["checked_at"] }}</td>
+                                <td>
+                                    {{ currency_symbol }}{{ "%.2f"|format(row["price"] * rate) }}
+                                </td>
+                                <td>
+                                    {% if row["price"] < product["threshold"] %}
+                                        <span class="badge badge-alert">Below Threshold</span>
+                                    {% else %}
+                                        <span class="badge badge-ok">Above Threshold</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="empty-state">No price history recorded yet.</p>
+            {% endif %}
+        </section>
+
+    </main>
+
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Price Alert Bot</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <header>
+        <h1>Price Alert Bot</h1>
+        <p>Monitoring {{ products|length }} product(s)</p>
+
+        <!-- Currency Selector -->
+        <form action="/set_currency" method="POST" class="currency-form">
+            <label for="currency">Display Currency:</label>
+            <select name="currency" id="currency" onchange="this.form.submit()">
+                {% for code, symbol in supported_currencies.items() %}
+                    <option value="{{ code }}" {% if code == currency_code %}selected{% endif %}>
+                        {{ code }} ({{ symbol }})
+                    </option>
+                {% endfor %}
+            </select>
+        </form>
+    </header>
+
+    <main>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Add Product Form -->
+        <section class="card">
+            <h2>Track a New Product</h2>
+            <form action="/add" method="POST" class="add-form">
+                <div class="form-group">
+                    <label for="name">Product Name</label>
+                    <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        placeholder="e.g. A Light in the Attic"
+                        required
+                    >
+                </div>
+                <div class="form-group">
+                    <label for="url">Product URL</label>
+                    <input
+                        type="url"
+                        id="url"
+                        name="url"
+                        placeholder="https://..."
+                        required
+                    >
+                </div>
+                <div class="form-group">
+                    <label for="threshold">Alert Threshold ({{ currency_symbol }})</label>
+                    <input
+                        type="number"
+                        id="threshold"
+                        name="threshold"
+                        placeholder="e.g. 55.00"
+                        step="0.01"
+                        required
+                    >
+                </div>
+                <button type="submit" class="btn btn-primary">Add Product</button>
+            </form>
+        </section>
+
+        <!-- Product List -->
+        <section>
+            <h2>Tracked Products</h2>
+
+            {% if products %}
+                <div class="product-grid">
+                    {% for product in products %}
+                        <div class="product-card {% if product.below_threshold %}below-threshold{% endif %}">
+
+                            <div class="product-header">
+                                <h3>{{ product.name }}</h3>
+                                {% if product.below_threshold %}
+                                    <span class="badge badge-alert">Below Threshold</span>
+                                {% else %}
+                                    <span class="badge badge-ok">Tracking</span>
+                                {% endif %}
+                            </div>
+
+                            <div class="product-prices">
+                                <div class="price-block">
+                                    <span class="price-label">Current Price</span>
+                                    <span class="price-value">
+                                        {% if product.latest_price %}
+                                            {{ currency_symbol }}{{ "%.2f"|format(product.latest_price) }}
+                                        {% else %}
+                                            Pending...
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <div class="price-block">
+                                    <span class="price-label">Your Threshold</span>
+                                    <span class="price-value threshold">
+                                        {{ currency_symbol }}{{ "%.2f"|format(product.threshold) }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {% if product.checked_at %}
+                                <p class="last-checked">Last checked: {{ product.checked_at }}</p>
+                            {% endif %}
+
+                            <div class="product-actions">
+                                <a href="/product/{{ product.id }}" class="btn btn-secondary">
+                                    View History
+                                </a>
+                                <form action="/remove/{{ product.id }}" method="POST"
+                                    onsubmit="return confirm('Remove {{ product.name }}?')">
+                                    <button type="submit" class="btn btn-danger">Remove</button>
+                                </form>
+                            </div>
+
+                        </div>
+                    {% endfor %}
+                </div>
+
+            {% else %}
+                <div class="empty-state">
+                    <p>No products being tracked yet. Add one above to get started.</p>
+                </div>
+            {% endif %}
+
+        </section>
+
+    </main>
+
+</body>
+</html>
